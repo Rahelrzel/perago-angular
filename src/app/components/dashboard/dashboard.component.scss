@@ -1,0 +1,52 @@
+.inner-content {
+  padding: 24px;
+  background: #fff;
+  min-height: 360px;
+}
+
+.logo {
+  height: 64px;
+  margin: 16px;
+  color: white;
+  font-size: 18px;
+  text-align: center;
+}
+
+h3 {
+  margin-bottom: 16px;
+  color: #333;
+}
+
+.ant-tree {
+  font-size: 16px;
+}
+
+.header-content{
+  color: white;
+}
+
+.tree-button-group {
+  margin-bottom: 16px;
+  background: #5308a8;
+}
+
+
+.custom-node-btn {
+  background-color: #28a745 !important; /* Green background */
+  color: #ffffff !important; /* White text */
+  border-radius: 8px !important; /* Rounded corners */
+  border: none;
+  padding: 6px 14px;
+  font-size: 14px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+
+  &:hover {
+    background-color: #218838 !important; /* Darker green on hover */
+    transform: scale(1.05);
+  }
+
+  &:active {
+    background-color: #1e7e34 !important; /* Even darker green when clicked */
+    transform: scale(0.98);
+  }
+}

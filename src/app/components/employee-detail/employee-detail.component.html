@@ -1,0 +1,128 @@
+<nz-layout class="h-screen">
+    <!-- Sidebar -->
+    <nz-sider nzCollapsible nzWidth="220px" class="bg-gray-900 text-white">
+      <div class="logo text-center text-white py-4 text-xl font-bold">
+        Company
+      </div>
+      <ul nz-menu nzTheme="dark" nzMode="inline" class="mt-4">
+        <li nz-menu-item [nzSelected]="selectedView==='info'" (click)="selectView('info')">
+          <span nz-icon nzType="user"></span>
+          <span>Employee Info</span>
+        </li>
+        <li nz-menu-item [nzSelected]="selectedView==='hierarchy'" (click)="selectView('hierarchy')">
+          <span nz-icon nzType="apartment"></span>
+          <span>Hierarchy</span>
+        </li>
+        <li nz-menu-item [nzSelected]="selectedView==='settings'" (click)="selectView('settings')">
+          <span nz-icon nzType="setting"></span>
+          <span>Settings</span>
+        </li>
+        <li nz-menu-item (click)="logout()">
+          <span nz-icon nzType="logout"></span>
+          <span>Logout</span>
+        </li>
+      </ul>
+    </nz-sider>
+  
+    <!-- Main Content -->
+    <nz-layout>
+      <nz-content class="p-6 bg-gray-50">
+        <!-- Loading -->
+        <nz-spin *ngIf="isLoading" nzTip="Loading..." class="w-full flex justify-center py-10"></nz-spin>
+  
+        <!-- Employee Info -->
+        <div *ngIf="!isLoading && selectedView==='info'">
+          <h2 class="text-3xl font-bold mb-2">{{ employee.firstName }} {{ employee.lastName }}</h2>
+          <p class="text-lg text-gray-600 mb-6">{{ employee.desc }}</p>
+  
+          <p class="text-green-600 font-medium text-xl mb-3">Employee Information</p>
+          <nz-table #basicTable nzBordered [nzShowPagination]="false" class="w-1/2">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Name</td><td>{{ employee.firstName }} {{ employee.lastName }}</td></tr>
+              <tr><td>Email</td><td><a [href]="'mailto:' + employee.email">{{ employee.email }}</a></td></tr>
+              <tr><td>Entry Date</td><td>{{ employee.createdAt | date:'MMMM d, y' }}</td></tr>
+              <tr><td>Salary</td><td>{{ employee.salary | currency }}</td></tr>
+              <tr><td>Description</td><td>{{ employee.desc }}</td></tr>
+            </tbody>
+          </nz-table>
+  
+          <p class="text-green-600 font-medium text-xl mt-10 mb-2">Employees Managed</p>
+          <nz-table [nzData]="managedEmployees" [nzBordered]="true" [nzShowPagination]="false">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Position</th>
+                <th>Email</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let emp of managedEmployees">
+                <td>{{ emp.name }}</td>
+                <td>{{ emp.position }}</td>
+                <td><a [href]="'mailto:' + emp.email">{{ emp.email }}</a></td>
+                <td>
+                  <button nz-button nzType="link" nzDanger (click)="showDeleteModal(emp)">
+                    <i nz-icon nzType="delete"></i>
+                  </button>
+                  <button nz-button nzType="link" (click)="showEditModal(emp)">
+                    <i nz-icon nzType="edit"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </nz-table>
+        </div>
+  
+        <!-- Hierarchy -->
+        <div *ngIf="!isLoading && selectedView==='hierarchy'">
+          <app-dashboard></app-dashboard>
+        </div>
+  
+        <!-- Settings -->
+        <div *ngIf="!isLoading && selectedView==='settings'">
+          <p>Settings page is under construction.</p>
+        </div>
+  
+        <nz-modal
+
+        class="modal"
+        [(nzVisible)]="isDeleteModalVisible"
+        nzTitle="Confirm Delete"
+        (nzOnOk)="confirmDelete()"
+        (nzOnCancel)="cancelDelete()"
+      >
+        <!-- Modal Body -->
+        <p>Are you sure you want to delete this employee?</p>
+      </nz-modal>
+  
+        <!-- Edit Modal -->
+        <nz-modal [(nzVisible)]="isEditModalVisible" nzTitle="Edit Employee" (nzOnCancel)="cancelEdit()" (nzOnOk)="saveEdit()" [nzOkLoading]="!editForm.valid">
+          <form [formGroup]="editForm" class="space-y-4">
+            <nz-form-item>
+              <nz-form-control>
+                <input nz-input formControlName="name" placeholder="Name" />
+              </nz-form-control>
+            </nz-form-item>
+            <nz-form-item>
+              <nz-form-control>
+                <input nz-input formControlName="position" placeholder="Position" />
+              </nz-form-control>
+            </nz-form-item>
+            <nz-form-item>
+              <nz-form-control>
+                <input nz-input formControlName="email" placeholder="Email" />
+              </nz-form-control>
+            </nz-form-item>
+          </form>
+        </nz-modal>
+      </nz-content>
+    </nz-layout>
+  </nz-layout>
+  
