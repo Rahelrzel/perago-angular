@@ -1,122 +1,106 @@
 import { Component, OnInit } from '@angular/core';
-import { Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-
-interface ManagedEmployee {
-  id: number;
-  name: string;
-  position: string;
-  email: string;
-}
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-employee-detail',
   templateUrl: './employee-detail.component.html',
-  styleUrls: ['./employee-detail.component.scss'],
+  styleUrls: ['./employee-detail.component.scss']
 })
 export class EmployeeDetailComponent implements OnInit {
-  selectedView: 'info' | 'hierarchy' | 'settings' = 'info'; // default view
-  isLoading = true;
+  selectedView: string = 'info';
+  isLoading = false;
 
-  employee: any = {
-    id: 1,
+  // Delete Modal
+  isDeleteModalVisible = false;
+  employeeToDelete: any = null;
+
+  // Edit Modal
+  isEditModalVisible = false;
+  editForm: FormGroup;
+  employeeToEdit: any = null;
+
+  // Static employee data
+  employee = {
     firstName: 'John',
     lastName: 'Doe',
+    desc: 'A highly skilled software engineer with 5+ years of experience.',
     email: 'john.doe@example.com',
     createdAt: new Date(),
-    salary: 80000,
-    desc: 'Head of Engineering Department',
+    salary: 60000
   };
 
-  managedEmployees: ManagedEmployee[] = [];
+  // Static managed employees list
+  managedEmployees = [
+    { name: 'Alice Smith', position: 'Developer', email: 'alice@example.com' },
+    { name: 'Bob Johnson', position: 'Designer', email: 'bob@example.com' },
+    { name: 'Charlie Brown', position: 'QA Tester', email: 'charlie@example.com' }
+  ];
 
-  // Modal control
-  isDeleteModalVisible = false;
-  isEditModalVisible = false;
-  selectedEmployee: ManagedEmployee | null = null;
-
-  // Edit form
-  editForm!: FormGroup;
-
-  constructor(
-    private router: Router,
-    private route: ActivatedRoute,
-    private fb: FormBuilder
-  ) {}
-
-  ngOnInit(): void {
-    // Placeholder managed employees
-    this.managedEmployees = [
-      { id: 1, name: 'Jane Smith', position: 'Frontend Developer', email: 'jane.smith@example.com' },
-      { id: 2, name: 'Michael Johnson', position: 'Backend Developer', email: 'michael.johnson@example.com' },
-      { id: 3, name: 'Emily Brown', position: 'QA Engineer', email: 'emily.brown@example.com' },
-    ];
-
+  constructor(private fb: FormBuilder, private router: Router) {
     this.editForm = this.fb.group({
       name: ['', Validators.required],
       position: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]],
+      email: ['', [Validators.required, Validators.email]]
     });
-
-    setTimeout(() => (this.isLoading = false), 1000);
   }
 
-  selectView(view: 'info' | 'hierarchy' | 'settings') {
+  ngOnInit(): void {}
+
+  /** Sidebar navigation */
+  selectView(view: string): void {
     this.selectedView = view;
   }
 
-  logout() {
+  /** Logout */
+  logout(): void {
+    localStorage.clear();
     this.router.navigate(['/login']);
   }
 
-  onRowClick(emp: ManagedEmployee) {
-    this.router.navigate(['/employee', emp.id]);
-  }
-
-  // Delete Modal
-  showDeleteModal(emp: ManagedEmployee) {
-    this.selectedEmployee = emp;
+  /** Delete modal functions */
+  showDeleteModal(emp: any): void {
+    this.employeeToDelete = emp;
     this.isDeleteModalVisible = true;
   }
 
-  confirmDelete() {
-    if (this.selectedEmployee) {
-      this.managedEmployees = this.managedEmployees.filter(
-        (e) => e.id !== this.selectedEmployee?.id
-      );
-    }
+  confirmDelete(): void {
+    this.managedEmployees = this.managedEmployees.filter(emp => emp !== this.employeeToDelete);
     this.isDeleteModalVisible = false;
+    this.employeeToDelete = null;
   }
 
-  cancelDelete() {
+  cancelDelete(): void {
     this.isDeleteModalVisible = false;
+    this.employeeToDelete = null;
   }
 
-  // Edit Modal
-  showEditModal(emp: ManagedEmployee) {
-    this.selectedEmployee = emp;
+  /** Edit modal functions */
+  showEditModal(emp: any): void {
+    this.employeeToEdit = emp;
+    this.isEditModalVisible = true;
+
     this.editForm.patchValue({
       name: emp.name,
       position: emp.position,
-      email: emp.email,
+      email: emp.email
     });
-    this.isEditModalVisible = true;
   }
 
-  saveEdit() {
-    if (this.selectedEmployee && this.editForm.valid) {
-      const index = this.managedEmployees.findIndex(e => e.id === this.selectedEmployee!.id);
+  saveEdit(): void {
+    if (this.editForm.valid) {
+      const updatedEmp = this.editForm.value;
+      const index = this.managedEmployees.indexOf(this.employeeToEdit);
       if (index > -1) {
-        this.managedEmployees[index] = {
-          ...this.managedEmployees[index],
-          ...this.editForm.value
-        };
+        this.managedEmployees[index] = updatedEmp;
       }
+      this.isEditModalVisible = false;
+      this.employeeToEdit = null;
     }
-    this.isEditModalVisible = false;
   }
 
-  cancelEdit() {
+  cancelEdit(): void {
     this.isEditModalVisible = false;
+    this.employeeToEdit = null;
   }
 }

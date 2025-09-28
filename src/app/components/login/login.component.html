@@ -1,7 +1,28 @@
-<div class="login-container">
-  <form class="login-form" (ngSubmit)="onLogin()">
-    <input type="text" placeholder="Username" [(ngModel)]="username" name="username" required />
-    <input type="password" placeholder="Password" [(ngModel)]="password" name="password" required />
-    <button type="submit">Login</button>
+<div class="flex justify-center items-center h-screen">
+  <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="bg-white p-6 rounded-lg shadow-lg w-96">
+    <h2 class="text-2xl mb-4 text-center">Login</h2>
+
+    <nz-form-item>
+      <nz-form-label [nzSpan]="24" nzFor="email">Email</nz-form-label>
+      <nz-form-control [nzSpan]="24">
+        <input nz-input formControlName="email" placeholder="Enter email" />
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-label [nzSpan]="24" nzFor="password">Password</nz-form-label>
+      <nz-form-control [nzSpan]="24">
+        <input nz-input type="password" formControlName="password" placeholder="Enter password" />
+      </nz-form-control>
+    </nz-form-item>
+
+    <button
+      nz-button
+      nzType="primary"
+      class="w-full mt-4"
+      [disabled]="loading"
+    >
+      {{ loading ? 'Logging in...' : 'Login' }}
+    </button>
   </form>
 </div>

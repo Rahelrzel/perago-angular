@@ -21,6 +21,10 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { EmployeeDetailComponent } from './components/employee-detail/employee-detail.component';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { ReactiveFormsModule } from '@angular/forms'; 
+import { NgxsModule } from '@ngxs/store';
+import { NgxsLoggerPluginModule } from '@ngxs/logger-plugin';
+import { NgxsReduxDevtoolsPluginModule } from '@ngxs/devtools-plugin';
+import { AuthState } from './store/auth.state';
 
 
 registerLocaleData(en);
@@ -41,7 +45,13 @@ registerLocaleData(en);
     LucideAngularModule.pick({File, House, Menu, UserCheck, Building2,Boxes}),
     NzButtonModule,
     NzFormModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    NgxsModule.forRoot([AuthState]),
+
+    NgxsLoggerPluginModule.forRoot(),
+    NgxsReduxDevtoolsPluginModule.forRoot()
+    
+    
   ],
   providers: [{ provide: NZ_I18N, useValue: en_US }],
   bootstrap: [AppComponent],
