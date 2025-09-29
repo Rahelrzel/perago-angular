@@ -15,6 +15,7 @@ import { NzCommentModule } from 'ng-zorro-antd/comment';
 import { NzNoAnimationModule } from 'ng-zorro-antd/core/no-animation';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
+import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -71,7 +72,7 @@ import { NzUploadModule } from 'ng-zorro-antd/upload';
     // NzDatePickerModule,
     NzDescriptionsModule,
     NzDividerModule,
-    // NzDrawerModule,
+    NzDrawerModule,
     NzDropDownModule,
     NzEmptyModule,
     NzFormModule,

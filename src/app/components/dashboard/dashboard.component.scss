@@ -30,6 +30,27 @@ h3 {
   background: #5308a8;
 }
 
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.error-message {
+  margin-bottom: 16px;
+}
+
+.custom-node {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.custom-node nz-badge {
+  margin-left: 8px;
+}
 
 .custom-node-btn {
   background-color: #28a745 !important; /* Green background */
@@ -49,4 +70,10 @@ h3 {
     background-color: #1e7e34 !important; /* Even darker green when clicked */
     transform: scale(0.98);
   }
+}
+
+
+::ng-deep .ant-drawer-body p {
+  margin-bottom: 16px;
+  font-size: 16px;
 }
