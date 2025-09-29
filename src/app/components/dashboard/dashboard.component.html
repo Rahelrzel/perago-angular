@@ -2,27 +2,54 @@
  
 
   <nz-layout>
-   
+  <nz-content style="margin: 16px;">
+    <div class="inner-content">
+      <h3>Company Employee Hierarchy</h3>
 
-    <nz-content style="margin: 16px;">
-      <div class="inner-content">
-        <h3>Company Employee Hierarchy</h3>
-        <nz-tree
-  [nzData]="employeeHierarchy"
-  nzBlockNode
-  nzShowLine
-  (nzClick)="onSelect($event)"
->
-  <ng-template #nzTreeTemplate let-node>
-    <button nz-button class="custom-node-btn">
-      {{ node.title }}
-    </button>
-  </ng-template>
-</nz-tree>
-       
+      <!-- Loading Spinner -->
+      <div *ngIf="(isLoading$ | async)" class="loading-spinner">
+        <nz-spin nzSimple [nzSize]="'large'"></nz-spin>
+        <p>Loading...</p>
       </div>
-    </nz-content>
-  </nz-layout>
+
+      <!-- Error Message -->
+      <div *ngIf="(error$ | async) as error" class="error-message">
+        <nz-alert nzType="error" [nzMessage]="error"></nz-alert>
+      </div>
+
+      <!-- Employee Tree -->
+      <div *ngIf="!(isLoading$ | async) && !(error$ | async)">
+        <nz-tree [nzData]="employeeHierarchy" nzBlockNode nzShowLine (nzClick)="onSelect($event)">
+          <ng-template #nzTreeTemplate let-node>
+            <span class="custom-node">
+              <span>{{ node.title }}</span>
+              <nz-badge [nzText]="node.origin.role" [nzColor]="'blue'"></nz-badge>
+            </span>
+          </ng-template>
+        </nz-tree>
+      </div>
+
+    </div>
+  </nz-content>
+</nz-layout>
+
+<!-- Employee Details Drawer -->
+<nz-drawer
+  [nzClosable]="true"
+  [nzVisible]="drawerVisible"
+  [nzTitle]="selectedEmployee?.firstName + ' ' + selectedEmployee?.lastName"
+  (nzOnClose)="closeDrawer()"
+>
+  <ng-container *nzDrawerContent>
+    <div *ngIf="selectedEmployee">
+      <p><strong>Email:</strong> {{ selectedEmployee.email }}</p>
+      <p><strong>Role:</strong> {{ selectedEmployee.role.name }}</p>
+      <p><strong>Salary:</strong> {{ selectedEmployee.salary | currency }}</p>
+      <p><strong>Description:</strong> {{ selectedEmployee.desc }}</p>
+    </div>
+  </ng-container>
+</nz-drawer>
+
 
 
 

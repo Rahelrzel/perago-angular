@@ -1,4 +1,4 @@
-<nz-layout class="h-screen">
+  <nz-layout class="employee-layout">
     <!-- Sidebar -->
     <nz-sider nzCollapsible nzWidth="220px" class="bg-gray-900 text-white">
       <div class="logo text-center text-white py-4 text-xl font-bold">
@@ -26,33 +26,48 @@
   
     <!-- Main Content -->
     <nz-layout>
-      <nz-content class="p-6 bg-gray-50">
+      <nz-content class="main-content">
         <!-- Loading -->
-        <nz-spin *ngIf="isLoading" nzTip="Loading..." class="w-full flex justify-center py-10"></nz-spin>
+        <nz-spin *ngIf="isLoading$ | async" nzTip="Loading..." class="w-full flex justify-center py-10"></nz-spin>
   
         <!-- Employee Info -->
-        <div *ngIf="!isLoading && selectedView==='info'">
-          <h2 class="text-3xl font-bold mb-2">{{ employee.firstName }} {{ employee.lastName }}</h2>
-          <p class="text-lg text-gray-600 mb-6">{{ employee.desc }}</p>
+        <div *ngIf="!(isLoading$ | async) && selectedView==='info' && employee">
+          <nz-card nzHoverable [nzBordered]="true">
+            <nz-card-meta
+              [nzTitle]="cardTitle"
+              [nzDescription]="employee.desc || ''"
+              [nzAvatar]="avatarTemplate"
+            ></nz-card-meta>
+          </nz-card>
+          <ng-template #cardTitle>
+            <h2 nz-typography nzTitleLevel="1">{{ employee.firstName }} {{ employee.lastName }}</h2>
+          </ng-template>
+          <ng-template #avatarTemplate>
+            <nz-avatar nzIcon="user" [nzSize]="64"></nz-avatar>
+          </ng-template>
+
+          <nz-descriptions nzTitle="Employee Information" [nzBordered]="true" class="mt-6">
+            <nz-descriptions-item nzTitle="Name" [nzSpan]="3">
+              <i nz-icon nzType="user"></i> {{ employee.firstName }} {{ employee.lastName }}
+            </nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Email" [nzSpan]="3">
+              <i nz-icon nzType="mail"></i> <a [href]="'mailto:' + employee.email">{{ employee.email }}</a>
+            </nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Entry Date" [nzSpan]="3">
+              <i nz-icon nzType="calendar"></i> {{ employee.createdAt | date:'MMMM d, y' }}
+            </nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Salary" [nzSpan]="3">
+              <i nz-icon nzType="dollar"></i> {{ employee.salary | currency }}
+            </nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Description" [nzSpan]="3">
+              <i nz-icon nzType="file-text"></i> {{ employee.desc }}
+            </nz-descriptions-item>
+          </nz-descriptions>
   
-          <p class="text-green-600 font-medium text-xl mb-3">Employee Information</p>
-          <nz-table #basicTable nzBordered [nzShowPagination]="false" class="w-1/2">
-            <thead>
-              <tr>
-                <th>Field</th>
-                <th>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Name</td><td>{{ employee.firstName }} {{ employee.lastName }}</td></tr>
-              <tr><td>Email</td><td><a [href]="'mailto:' + employee.email">{{ employee.email }}</a></td></tr>
-              <tr><td>Entry Date</td><td>{{ employee.createdAt | date:'MMMM d, y' }}</td></tr>
-              <tr><td>Salary</td><td>{{ employee.salary | currency }}</td></tr>
-              <tr><td>Description</td><td>{{ employee.desc }}</td></tr>
-            </tbody>
-          </nz-table>
-  
-          <p class="text-green-600 font-medium text-xl mt-10 mb-2">Employees Managed</p>
+          <div class="flex justify-between items-center mt-10 mb-2">
+            <h3 nz-typography nzTitleLevel="4">Employees Managed</h3>
+            <button nz-button nzType="primary" (click)="showAddEmployeeModal()">Add Employee</button>
+          </div>
           <nz-table [nzData]="managedEmployees" [nzBordered]="true" [nzShowPagination]="false">
             <thead>
               <tr>
@@ -64,15 +79,12 @@
             </thead>
             <tbody>
               <tr *ngFor="let emp of managedEmployees">
-                <td>{{ emp.name }}</td>
-                <td>{{ emp.position }}</td>
+                <td>{{ emp.firstName }} {{ emp.lastName }}</td>
+                <td>{{ emp.role.name }}</td>
                 <td><a [href]="'mailto:' + emp.email">{{ emp.email }}</a></td>
                 <td>
                   <button nz-button nzType="link" nzDanger (click)="showDeleteModal(emp)">
                     <i nz-icon nzType="delete"></i>
-                  </button>
-                  <button nz-button nzType="link" (click)="showEditModal(emp)">
-                    <i nz-icon nzType="edit"></i>
                   </button>
                 </td>
               </tr>
@@ -81,48 +93,137 @@
         </div>
   
         <!-- Hierarchy -->
-        <div *ngIf="!isLoading && selectedView==='hierarchy'">
+        <div *ngIf="!(isLoading$ | async) && selectedView==='hierarchy'">
           <app-dashboard></app-dashboard>
         </div>
   
         <!-- Settings -->
-        <div *ngIf="!isLoading && selectedView==='settings'">
-          <p>Settings page is under construction.</p>
+        <div *ngIf="!(isLoading$ | async) && selectedView==='settings'" class="flex justify-center items-center">
+          <nz-card class="w-full max-w-lg">
+            <h2 nz-typography nzTitleLevel="2" class="text-center mb-6">Change Password</h2>
+            <form nz-form [formGroup]="changePasswordForm" (ngSubmit)="submitChangePassword()">
+              <nz-form-item>
+                <nz-form-label [nzSm]="8" [nzXs]="24" nzFor="oldPassword">Old Password</nz-form-label>
+                <nz-form-control [nzSm]="16" [nzXs]="24" nzErrorTip="Please enter your old password">
+                  <nz-input-group [nzSuffix]="oldPasswordTpl">
+                    <input [type]="oldPasswordVisible ? 'text' : 'password'" nz-input formControlName="oldPassword" id="oldPassword" />
+                  </nz-input-group>
+                  <ng-template #oldPasswordTpl>
+                    <i nz-icon [nzType]="oldPasswordVisible ? 'eye-invisible' : 'eye'" (click)="oldPasswordVisible = !oldPasswordVisible"></i>
+                  </ng-template>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label [nzSm]="8" [nzXs]="24" nzFor="newPassword">New Password</nz-form-label>
+                <nz-form-control [nzSm]="16" [nzXs]="24" [nzErrorTip]="passwordErrorTpl">
+                  <nz-input-group [nzSuffix]="newPasswordTpl">
+                    <input [type]="newPasswordVisible ? 'text' : 'password'" nz-input formControlName="newPassword" id="newPassword" />
+                  </nz-input-group>
+                  <ng-template #newPasswordTpl>
+                    <i nz-icon [nzType]="newPasswordVisible ? 'eye-invisible' : 'eye'" (click)="newPasswordVisible = !newPasswordVisible"></i>
+                  </ng-template>
+                  <ng-template #passwordErrorTpl let-control>
+                    <ng-container *ngIf="control.hasError('required')">Please enter your new password</ng-container>
+                    <ng-container *ngIf="control.hasError('minlength')">Password must be at least 6 characters long</ng-container>
+                  </ng-template>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label [nzSm]="8" [nzXs]="24" nzFor="confirmPassword">Confirm Password</nz-form-label>
+                <nz-form-control [nzSm]="16" [nzXs]="24" [nzErrorTip]="confirmPasswordErrorTpl">
+                  <nz-input-group [nzSuffix]="confirmPasswordTpl">
+                    <input [type]="confirmPasswordVisible ? 'text' : 'password'" nz-input formControlName="confirmPassword" id="confirmPassword" />
+                  </nz-input-group>
+                  <ng-template #confirmPasswordTpl>
+                    <i nz-icon [nzType]="confirmPasswordVisible ? 'eye-invisible' : 'eye'" (click)="confirmPasswordVisible = !confirmPasswordVisible"></i>
+                  </ng-template>
+                  <ng-template #confirmPasswordErrorTpl let-control>
+                    <ng-container *ngIf="control.hasError('required')">Please confirm your new password</ng-container>
+                    <ng-container *ngIf="control.hasError('passwordMismatch')">Passwords do not match</ng-container>
+                  </ng-template>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-control [nzSm]="16" [nzXs]="24" [nzOffset]="8">
+                  <nz-progress [nzPercent]="passwordStrength" [nzShowInfo]="false"></nz-progress>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-control [nzSm]="16" [nzXs]="24" [nzOffset]="8">
+                  <button nz-button nzType="primary" [nzLoading]="isChangingPassword" [disabled]="!changePasswordForm.valid">Change Password</button>
+                </nz-form-control>
+              </nz-form-item>
+            </form>
+          </nz-card>
         </div>
   
         <nz-modal
+          class="modal"
+          [(nzVisible)]="isDeleteModalVisible"
+          nzTitle="Confirm Delete"
+          (nzOnOk)="confirmDelete()"
+          (nzOnCancel)="cancelDelete()"
+          [nzOkLoading]="isDeleting"
+        >
+          <p *nzModalContent>Are you sure you want to delete this employee?</p>
+        </nz-modal>
 
-        class="modal"
-        [(nzVisible)]="isDeleteModalVisible"
-        nzTitle="Confirm Delete"
-        (nzOnOk)="confirmDelete()"
-        (nzOnCancel)="cancelDelete()"
-      >
-        <!-- Modal Body -->
-        <p>Are you sure you want to delete this employee?</p>
-      </nz-modal>
-  
-        <!-- Edit Modal -->
-        <nz-modal [(nzVisible)]="isEditModalVisible" nzTitle="Edit Employee" (nzOnCancel)="cancelEdit()" (nzOnOk)="saveEdit()" [nzOkLoading]="!editForm.valid">
-          <form [formGroup]="editForm" class="space-y-4">
-            <nz-form-item>
-              <nz-form-control>
-                <input nz-input formControlName="name" placeholder="Name" />
-              </nz-form-control>
-            </nz-form-item>
-            <nz-form-item>
-              <nz-form-control>
-                <input nz-input formControlName="position" placeholder="Position" />
-              </nz-form-control>
-            </nz-form-item>
-            <nz-form-item>
-              <nz-form-control>
-                <input nz-input formControlName="email" placeholder="Email" />
-              </nz-form-control>
-            </nz-form-item>
-          </form>
+        <nz-modal
+          [(nzVisible)]="isAddEmployeeModalVisible"
+          nzTitle="Add New Employee"
+          (nzOnCancel)="cancelAddEmployee()"
+          (nzOnOk)="handleAddEmployee()"
+          [nzOkLoading]="isAddingEmployee"
+        >
+          <ng-container *nzModalContent>
+            <form [formGroup]="addEmployeeForm">
+              <nz-form-item>
+                <nz-form-label [nzSm]="6" [nzXs]="24" nzFor="firstName">First Name</nz-form-label>
+                <nz-form-control [nzSm]="14" [nzXs]="24">
+                  <input nz-input formControlName="firstName" id="firstName" placeholder="First Name" />
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label [nzSm]="6" [nzXs]="24" nzFor="lastName">Last Name</nz-form-label>
+                <nz-form-control [nzSm]="14" [nzXs]="24">
+                  <input nz-input formControlName="lastName" id="lastName" placeholder="Last Name" />
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label [nzSm]="6" [nzXs]="24" nzFor="email">Email</nz-form-label>
+                <nz-form-control [nzSm]="14" [nzXs]="24">
+                  <input nz-input formControlName="email" id="email" placeholder="Email" />
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label [nzSm]="6" [nzXs]="24" nzFor="password">Password</nz-form-label>
+                <nz-form-control [nzSm]="14" [nzXs]="24">
+                  <input nz-input formControlName="password" type="password" id="password" placeholder="Password" />
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label [nzSm]="6" [nzXs]="24" nzFor="roleId">Role</nz-form-label>
+                <nz-form-control [nzSm]="14" [nzXs]="24">
+                  <nz-select formControlName="roleId" id="roleId" nzPlaceHolder="Select a role">
+                    <nz-option *ngFor="let role of (roles$ | async)" [nzValue]="role.id" [nzLabel]="role.name"></nz-option>
+                  </nz-select>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label [nzSm]="6" [nzXs]="24" nzFor="salary">Salary</nz-form-label>
+                <nz-form-control [nzSm]="14" [nzXs]="24">
+                  <nz-input-number formControlName="salary" id="salary" [nzMin]="0" [nzStep]="1000"></nz-input-number>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label [nzSm]="6" [nzXs]="24" nzFor="desc">Description</nz-form-label>
+                <nz-form-control [nzSm]="14" [nzXs]="24">
+                  <textarea nz-input formControlName="desc" id="desc" rows="3"></textarea>
+                </nz-form-control>
+              </nz-form-item>
+            </form>
+          </ng-container>
         </nz-modal>
       </nz-content>
     </nz-layout>
   </nz-layout>
-  

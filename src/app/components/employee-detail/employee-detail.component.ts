@@ -1,51 +1,149 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ValidatorFn, AbstractControl } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Select, Store, Actions, ofActionSuccessful, ofActionErrored } from '@ngxs/store';
+import { Observable, Subject } from 'rxjs';
+import { takeUntil, map } from 'rxjs/operators';
+import { User } from 'src/app/interface/user.interface';
+import { AuthState, Logout, ChangePassword, ChangePasswordSuccess, ChangePasswordFailure } from 'src/app/store/auth.state';
+import { EmployeeState, FetchManagedEmployees, GetRoles, AddEmployee, DeleteEmployee, AddEmployeeSuccess, AddEmployeeFailure, DeleteEmployeeSuccess, DeleteEmployeeFailure } from 'src/app/store/employee.state';
+import { Role } from 'src/app/service/employee.service';
+import { NzMessageService } from 'ng-zorro-antd/message';
+
+export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): { [key: string]: boolean } | null => {
+  const newPassword = control.get('newPassword');
+  const confirmPassword = control.get('confirmPassword');
+  return newPassword && confirmPassword && newPassword.value !== confirmPassword.value ? { passwordMismatch: true } : null;
+};
 
 @Component({
   selector: 'app-employee-detail',
   templateUrl: './employee-detail.component.html',
   styleUrls: ['./employee-detail.component.scss']
 })
-export class EmployeeDetailComponent implements OnInit {
+export class EmployeeDetailComponent implements OnInit, OnDestroy {
+  @Select(AuthState.user) user$!: Observable<User | null>;
+  @Select(EmployeeState.managedEmployees) managedEmployees$!: Observable<User[]>;
+  @Select(EmployeeState.roles) roles$!: Observable<Role[]>;
+  @Select(EmployeeState.isLoading) isLoading$!: Observable<boolean>;
+
+  private destroy$ = new Subject<void>();
+
   selectedView: string = 'info';
-  isLoading = false;
 
   // Delete Modal
   isDeleteModalVisible = false;
-  employeeToDelete: any = null;
+  employeeToDelete: User | null = null;
+  isDeleting = false;
 
-  // Edit Modal
-  isEditModalVisible = false;
-  editForm: FormGroup;
-  employeeToEdit: any = null;
+  // Add Employee Modal
+  isAddEmployeeModalVisible = false;
+  addEmployeeForm: FormGroup;
+  isAddingEmployee = false;
 
-  // Static employee data
-  employee = {
-    firstName: 'John',
-    lastName: 'Doe',
-    desc: 'A highly skilled software engineer with 5+ years of experience.',
-    email: 'john.doe@example.com',
-    createdAt: new Date(),
-    salary: 60000
-  };
+  // Change Password
+  changePasswordForm: FormGroup;
+  isChangingPassword = false;
+  oldPasswordVisible = false;
+  newPasswordVisible = false;
+  confirmPasswordVisible = false;
+  passwordStrength = 0;
 
-  // Static managed employees list
-  managedEmployees = [
-    { name: 'Alice Smith', position: 'Developer', email: 'alice@example.com' },
-    { name: 'Bob Johnson', position: 'Designer', email: 'bob@example.com' },
-    { name: 'Charlie Brown', position: 'QA Tester', email: 'charlie@example.com' }
-  ];
+  employee: User | null = null;
+  managedEmployees: User[] = [];
 
-  constructor(private fb: FormBuilder, private router: Router) {
-    this.editForm = this.fb.group({
-      name: ['', Validators.required],
-      position: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]]
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private store: Store,
+    private message: NzMessageService,
+    private actions$: Actions
+  ) {
+    this.addEmployeeForm = this.fb.group({
+      firstName: ['', Validators.required],
+      lastName: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', Validators.required],
+      roleId: ['', Validators.required],
+      salary: [null, Validators.required],
+      desc: ['']
+    });
+
+    this.changePasswordForm = this.fb.group({
+      oldPassword: ['', Validators.required],
+      newPassword: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: ['', Validators.required]
+    }, { validator: passwordMatchValidator });
+
+    this.changePasswordForm.get('newPassword')?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
+      this.updatePasswordStrength(value);
     });
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.store.dispatch(new GetRoles());
+
+    this.user$.pipe(takeUntil(this.destroy$)).subscribe(user => {
+      if (user) {
+        this.employee = user;
+        this.store.dispatch(new FetchManagedEmployees());
+      }
+    });
+
+    this.managedEmployees$.pipe(takeUntil(this.destroy$)).subscribe(employees => {
+      this.managedEmployees = employees;
+    });
+
+    this.actions$.pipe(ofActionSuccessful(AddEmployeeSuccess), takeUntil(this.destroy$)).subscribe(() => {
+      this.isAddingEmployee = false;
+      this.isAddEmployeeModalVisible = false;
+      this.message.success('Employee added successfully');
+    });
+
+    this.actions$.pipe(ofActionErrored(AddEmployeeFailure), takeUntil(this.destroy$)).subscribe(() => {
+      this.isAddingEmployee = false;
+      this.message.error('Failed to add employee');
+    });
+
+    this.actions$.pipe(ofActionSuccessful(DeleteEmployeeSuccess), takeUntil(this.destroy$)).subscribe(() => {
+      this.isDeleting = false;
+      this.isDeleteModalVisible = false;
+      this.message.success('Employee deleted successfully');
+    });
+
+    this.actions$.pipe(ofActionErrored(DeleteEmployeeFailure), takeUntil(this.destroy$)).subscribe(() => {
+      this.isDeleting = false;
+      this.message.error('Failed to delete employee');
+    });
+
+    this.actions$.pipe(ofActionSuccessful(ChangePasswordSuccess), takeUntil(this.destroy$)).subscribe(() => {
+      this.isChangingPassword = false;
+      this.message.success('Password changed successfully');
+      this.changePasswordForm.reset();
+    });
+
+    this.actions$.pipe(ofActionErrored(ChangePasswordFailure), takeUntil(this.destroy$)).subscribe(() => {
+      this.isChangingPassword = false;
+      this.message.error('Failed to change password');
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  updatePasswordStrength(value: string): void {
+    const hasLetters = /[a-zA-Z]/.test(value);
+    const hasNumbers = /[0-9]/.test(value);
+    const hasSymbols = /[^a-zA-Z0-9]/.test(value);
+    let strength = 0;
+    if (hasLetters) strength += 25;
+    if (hasNumbers) strength += 25;
+    if (hasSymbols) strength += 25;
+    if (value.length >= 8) strength += 25;
+    this.passwordStrength = strength;
+  }
 
   /** Sidebar navigation */
   selectView(view: string): void {
@@ -54,20 +152,21 @@ export class EmployeeDetailComponent implements OnInit {
 
   /** Logout */
   logout(): void {
-    localStorage.clear();
+    this.store.dispatch(new Logout());
     this.router.navigate(['/login']);
   }
 
   /** Delete modal functions */
-  showDeleteModal(emp: any): void {
+  showDeleteModal(emp: User): void {
     this.employeeToDelete = emp;
     this.isDeleteModalVisible = true;
   }
 
   confirmDelete(): void {
-    this.managedEmployees = this.managedEmployees.filter(emp => emp !== this.employeeToDelete);
-    this.isDeleteModalVisible = false;
-    this.employeeToDelete = null;
+    if (this.employeeToDelete) {
+      this.isDeleting = true;
+      this.store.dispatch(new DeleteEmployee(this.employeeToDelete.id));
+    }
   }
 
   cancelDelete(): void {
@@ -75,32 +174,29 @@ export class EmployeeDetailComponent implements OnInit {
     this.employeeToDelete = null;
   }
 
-  /** Edit modal functions */
-  showEditModal(emp: any): void {
-    this.employeeToEdit = emp;
-    this.isEditModalVisible = true;
-
-    this.editForm.patchValue({
-      name: emp.name,
-      position: emp.position,
-      email: emp.email
-    });
+  /** Add Employee modal functions */
+  showAddEmployeeModal(): void {
+    this.isAddEmployeeModalVisible = true;
   }
 
-  saveEdit(): void {
-    if (this.editForm.valid) {
-      const updatedEmp = this.editForm.value;
-      const index = this.managedEmployees.indexOf(this.employeeToEdit);
-      if (index > -1) {
-        this.managedEmployees[index] = updatedEmp;
-      }
-      this.isEditModalVisible = false;
-      this.employeeToEdit = null;
+  handleAddEmployee(): void {
+    if (this.addEmployeeForm.valid) {
+      this.isAddingEmployee = true;
+      this.store.dispatch(new AddEmployee(this.addEmployeeForm.value));
     }
   }
 
-  cancelEdit(): void {
-    this.isEditModalVisible = false;
-    this.employeeToEdit = null;
+  cancelAddEmployee(): void {
+    this.isAddEmployeeModalVisible = false;
+    this.addEmployeeForm.reset();
+  }
+
+  /** Change Password */
+  submitChangePassword(): void {
+    if (this.changePasswordForm.valid) {
+      this.isChangingPassword = true;
+      const { oldPassword, newPassword } = this.changePasswordForm.value;
+      this.store.dispatch(new ChangePassword({ oldPassword, newPassword }));
+    }
   }
 }
