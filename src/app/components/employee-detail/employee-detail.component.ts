@@ -1,14 +1,20 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ValidatorFn, AbstractControl } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Select, Store, Actions, ofActionSuccessful, ofActionErrored } from '@ngxs/store';
 import { Observable, Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, map } from 'rxjs/operators';
 import { User } from 'src/app/interface/user.interface';
 import { AuthState, Logout, ChangePassword, ChangePasswordSuccess, ChangePasswordFailure } from 'src/app/store/auth.state';
 import { EmployeeState, FetchManagedEmployees, GetRoles, AddEmployee, DeleteEmployee, AddEmployeeSuccess, AddEmployeeFailure, DeleteEmployeeSuccess, DeleteEmployeeFailure } from 'src/app/store/employee.state';
 import { Role } from 'src/app/service/employee.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
+
+export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): { [key: string]: boolean } | null => {
+  const newPassword = control.get('newPassword');
+  const confirmPassword = control.get('confirmPassword');
+  return newPassword && confirmPassword && newPassword.value !== confirmPassword.value ? { passwordMismatch: true } : null;
+};
 
 @Component({
   selector: 'app-employee-detail',
@@ -38,6 +44,10 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
   // Change Password
   changePasswordForm: FormGroup;
   isChangingPassword = false;
+  oldPasswordVisible = false;
+  newPasswordVisible = false;
+  confirmPasswordVisible = false;
+  passwordStrength = 0;
 
   employee: User | null = null;
   managedEmployees: User[] = [];
@@ -61,7 +71,12 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
 
     this.changePasswordForm = this.fb.group({
       oldPassword: ['', Validators.required],
-      newPassword: ['', [Validators.required, Validators.minLength(6)]]
+      newPassword: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: ['', Validators.required]
+    }, { validator: passwordMatchValidator });
+
+    this.changePasswordForm.get('newPassword')?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
+      this.updatePasswordStrength(value);
     });
   }
 
@@ -118,6 +133,18 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  updatePasswordStrength(value: string): void {
+    const hasLetters = /[a-zA-Z]/.test(value);
+    const hasNumbers = /[0-9]/.test(value);
+    const hasSymbols = /[^a-zA-Z0-9]/.test(value);
+    let strength = 0;
+    if (hasLetters) strength += 25;
+    if (hasNumbers) strength += 25;
+    if (hasSymbols) strength += 25;
+    if (value.length >= 8) strength += 25;
+    this.passwordStrength = strength;
+  }
+
   /** Sidebar navigation */
   selectView(view: string): void {
     this.selectedView = view;
@@ -168,7 +195,8 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
   submitChangePassword(): void {
     if (this.changePasswordForm.valid) {
       this.isChangingPassword = true;
-      this.store.dispatch(new ChangePassword(this.changePasswordForm.value));
+      const { oldPassword, newPassword } = this.changePasswordForm.value;
+      this.store.dispatch(new ChangePassword({ oldPassword, newPassword }));
     }
   }
 }

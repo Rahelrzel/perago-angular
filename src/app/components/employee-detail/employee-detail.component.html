@@ -1,4 +1,4 @@
-  <nz-layout class="h-screen">
+  <nz-layout class="employee-layout">
     <!-- Sidebar -->
     <nz-sider nzCollapsible nzWidth="220px" class="bg-gray-900 text-white">
       <div class="logo text-center text-white py-4 text-xl font-bold">
@@ -26,34 +26,46 @@
   
     <!-- Main Content -->
     <nz-layout>
-      <nz-content class="p-6 bg-gray-50">
+      <nz-content class="main-content">
         <!-- Loading -->
         <nz-spin *ngIf="isLoading$ | async" nzTip="Loading..." class="w-full flex justify-center py-10"></nz-spin>
   
         <!-- Employee Info -->
         <div *ngIf="!(isLoading$ | async) && selectedView==='info' && employee">
-          <h2 class="text-3xl font-bold mb-2">{{ employee.firstName }} {{ employee.lastName }}</h2>
-          <p class="text-lg text-gray-600 mb-6">{{ employee.desc }}</p>
-  
-          <p class="text-green-600 font-medium text-xl mb-3">Employee Information</p>
-          <nz-table #basicTable nzBordered [nzShowPagination]="false" class="w-1/2">
-            <thead>
-              <tr>
-                <th>Field</th>
-                <th>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Name</td><td>{{ employee.firstName }} {{ employee.lastName }}</td></tr>
-              <tr><td>Email</td><td><a [href]="'mailto:' + employee.email">{{ employee.email }}</a></td></tr>
-              <tr><td>Entry Date</td><td>{{ employee.createdAt | date:'MMMM d, y' }}</td></tr>
-              <tr><td>Salary</td><td>{{ employee.salary | currency }}</td></tr>
-              <tr><td>Description</td><td>{{ employee.desc }}</td></tr>
-            </tbody>
-          </nz-table>
+          <nz-card nzHoverable [nzBordered]="true">
+            <nz-card-meta
+              [nzTitle]="cardTitle"
+              [nzDescription]="employee.desc || ''"
+              [nzAvatar]="avatarTemplate"
+            ></nz-card-meta>
+          </nz-card>
+          <ng-template #cardTitle>
+            <h2 nz-typography nzTitleLevel="1">{{ employee.firstName }} {{ employee.lastName }}</h2>
+          </ng-template>
+          <ng-template #avatarTemplate>
+            <nz-avatar nzIcon="user" [nzSize]="64"></nz-avatar>
+          </ng-template>
+
+          <nz-descriptions nzTitle="Employee Information" [nzBordered]="true" class="mt-6">
+            <nz-descriptions-item nzTitle="Name" [nzSpan]="3">
+              <i nz-icon nzType="user"></i> {{ employee.firstName }} {{ employee.lastName }}
+            </nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Email" [nzSpan]="3">
+              <i nz-icon nzType="mail"></i> <a [href]="'mailto:' + employee.email">{{ employee.email }}</a>
+            </nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Entry Date" [nzSpan]="3">
+              <i nz-icon nzType="calendar"></i> {{ employee.createdAt | date:'MMMM d, y' }}
+            </nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Salary" [nzSpan]="3">
+              <i nz-icon nzType="dollar"></i> {{ employee.salary | currency }}
+            </nz-descriptions-item>
+            <nz-descriptions-item nzTitle="Description" [nzSpan]="3">
+              <i nz-icon nzType="file-text"></i> {{ employee.desc }}
+            </nz-descriptions-item>
+          </nz-descriptions>
   
           <div class="flex justify-between items-center mt-10 mb-2">
-            <p class="text-green-600 font-medium text-xl">Employees Managed</p>
+            <h3 nz-typography nzTitleLevel="4">Employees Managed</h3>
             <button nz-button nzType="primary" (click)="showAddEmployeeModal()">Add Employee</button>
           </div>
           <nz-table [nzData]="managedEmployees" [nzBordered]="true" [nzShowPagination]="false">
@@ -86,27 +98,63 @@
         </div>
   
         <!-- Settings -->
-        <div *ngIf="!(isLoading$ | async) && selectedView==='settings'">
-          <h2 class="text-2xl font-bold mb-4">Change Password</h2>
-          <form [formGroup]="changePasswordForm" (ngSubmit)="submitChangePassword()" class="max-w-md">
-            <nz-form-item>
-              <nz-form-label nzFor="oldPassword">Old Password</nz-form-label>
-              <nz-form-control>
-                <input nz-input formControlName="oldPassword" type="password" id="oldPassword" placeholder="Old Password" />
-              </nz-form-control>
-            </nz-form-item>
-            <nz-form-item>
-              <nz-form-label nzFor="newPassword">New Password</nz-form-label>
-              <nz-form-control>
-                <input nz-input formControlName="newPassword" type="password" id="newPassword" placeholder="New Password" />
-              </nz-form-control>
-            </nz-form-item>
-            <nz-form-item>
-              <nz-form-control>
-                <button nz-button nzType="primary" [nzLoading]="isChangingPassword" [disabled]="!changePasswordForm.valid">Change Password</button>
-              </nz-form-control>
-            </nz-form-item>
-          </form>
+        <div *ngIf="!(isLoading$ | async) && selectedView==='settings'" class="flex justify-center items-center">
+          <nz-card class="w-full max-w-lg">
+            <h2 nz-typography nzTitleLevel="2" class="text-center mb-6">Change Password</h2>
+            <form nz-form [formGroup]="changePasswordForm" (ngSubmit)="submitChangePassword()">
+              <nz-form-item>
+                <nz-form-label [nzSm]="8" [nzXs]="24" nzFor="oldPassword">Old Password</nz-form-label>
+                <nz-form-control [nzSm]="16" [nzXs]="24" nzErrorTip="Please enter your old password">
+                  <nz-input-group [nzSuffix]="oldPasswordTpl">
+                    <input [type]="oldPasswordVisible ? 'text' : 'password'" nz-input formControlName="oldPassword" id="oldPassword" />
+                  </nz-input-group>
+                  <ng-template #oldPasswordTpl>
+                    <i nz-icon [nzType]="oldPasswordVisible ? 'eye-invisible' : 'eye'" (click)="oldPasswordVisible = !oldPasswordVisible"></i>
+                  </ng-template>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label [nzSm]="8" [nzXs]="24" nzFor="newPassword">New Password</nz-form-label>
+                <nz-form-control [nzSm]="16" [nzXs]="24" [nzErrorTip]="passwordErrorTpl">
+                  <nz-input-group [nzSuffix]="newPasswordTpl">
+                    <input [type]="newPasswordVisible ? 'text' : 'password'" nz-input formControlName="newPassword" id="newPassword" />
+                  </nz-input-group>
+                  <ng-template #newPasswordTpl>
+                    <i nz-icon [nzType]="newPasswordVisible ? 'eye-invisible' : 'eye'" (click)="newPasswordVisible = !newPasswordVisible"></i>
+                  </ng-template>
+                  <ng-template #passwordErrorTpl let-control>
+                    <ng-container *ngIf="control.hasError('required')">Please enter your new password</ng-container>
+                    <ng-container *ngIf="control.hasError('minlength')">Password must be at least 6 characters long</ng-container>
+                  </ng-template>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-label [nzSm]="8" [nzXs]="24" nzFor="confirmPassword">Confirm Password</nz-form-label>
+                <nz-form-control [nzSm]="16" [nzXs]="24" [nzErrorTip]="confirmPasswordErrorTpl">
+                  <nz-input-group [nzSuffix]="confirmPasswordTpl">
+                    <input [type]="confirmPasswordVisible ? 'text' : 'password'" nz-input formControlName="confirmPassword" id="confirmPassword" />
+                  </nz-input-group>
+                  <ng-template #confirmPasswordTpl>
+                    <i nz-icon [nzType]="confirmPasswordVisible ? 'eye-invisible' : 'eye'" (click)="confirmPasswordVisible = !confirmPasswordVisible"></i>
+                  </ng-template>
+                  <ng-template #confirmPasswordErrorTpl let-control>
+                    <ng-container *ngIf="control.hasError('required')">Please confirm your new password</ng-container>
+                    <ng-container *ngIf="control.hasError('passwordMismatch')">Passwords do not match</ng-container>
+                  </ng-template>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-control [nzSm]="16" [nzXs]="24" [nzOffset]="8">
+                  <nz-progress [nzPercent]="passwordStrength" [nzShowInfo]="false"></nz-progress>
+                </nz-form-control>
+              </nz-form-item>
+              <nz-form-item>
+                <nz-form-control [nzSm]="16" [nzXs]="24" [nzOffset]="8">
+                  <button nz-button nzType="primary" [nzLoading]="isChangingPassword" [disabled]="!changePasswordForm.valid">Change Password</button>
+                </nz-form-control>
+              </nz-form-item>
+            </form>
+          </nz-card>
         </div>
   
         <nz-modal

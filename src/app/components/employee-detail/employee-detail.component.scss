@@ -1,4 +1,14 @@
-.p-6 {
+.employee-layout {
+    height: 100vh;
+  }
+  
+  .main-content {
+    overflow-y: auto;
+    padding: 24px;
+    background: #f0f2f5;
+  }
+  
+  .p-6 {
     padding: 1.5rem;
   }
   
@@ -13,4 +23,7 @@
   .modal{
     height: 80vh;
   }
-  
+
+  nz-card {
+    margin-bottom: 1.5rem;
+  }
