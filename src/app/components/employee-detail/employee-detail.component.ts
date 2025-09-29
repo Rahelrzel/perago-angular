@@ -5,7 +5,7 @@ import { Select, Store, Actions, ofActionSuccessful, ofActionErrored } from '@ng
 import { Observable, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { User } from 'src/app/interface/user.interface';
-import { AuthState, Logout } from 'src/app/store/auth.state';
+import { AuthState, Logout, ChangePassword, ChangePasswordSuccess, ChangePasswordFailure } from 'src/app/store/auth.state';
 import { EmployeeState, FetchManagedEmployees, GetRoles, AddEmployee, DeleteEmployee, AddEmployeeSuccess, AddEmployeeFailure, DeleteEmployeeSuccess, DeleteEmployeeFailure } from 'src/app/store/employee.state';
 import { Role } from 'src/app/service/employee.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -35,6 +35,10 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
   addEmployeeForm: FormGroup;
   isAddingEmployee = false;
 
+  // Change Password
+  changePasswordForm: FormGroup;
+  isChangingPassword = false;
+
   employee: User | null = null;
   managedEmployees: User[] = [];
 
@@ -53,6 +57,11 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
       roleId: ['', Validators.required],
       salary: [null, Validators.required],
       desc: ['']
+    });
+
+    this.changePasswordForm = this.fb.group({
+      oldPassword: ['', Validators.required],
+      newPassword: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
 
@@ -90,6 +99,17 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
     this.actions$.pipe(ofActionErrored(DeleteEmployeeFailure), takeUntil(this.destroy$)).subscribe(() => {
       this.isDeleting = false;
       this.message.error('Failed to delete employee');
+    });
+
+    this.actions$.pipe(ofActionSuccessful(ChangePasswordSuccess), takeUntil(this.destroy$)).subscribe(() => {
+      this.isChangingPassword = false;
+      this.message.success('Password changed successfully');
+      this.changePasswordForm.reset();
+    });
+
+    this.actions$.pipe(ofActionErrored(ChangePasswordFailure), takeUntil(this.destroy$)).subscribe(() => {
+      this.isChangingPassword = false;
+      this.message.error('Failed to change password');
     });
   }
 
@@ -142,5 +162,13 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
   cancelAddEmployee(): void {
     this.isAddEmployeeModalVisible = false;
     this.addEmployeeForm.reset();
+  }
+
+  /** Change Password */
+  submitChangePassword(): void {
+    if (this.changePasswordForm.valid) {
+      this.isChangingPassword = true;
+      this.store.dispatch(new ChangePassword(this.changePasswordForm.value));
+    }
   }
 }

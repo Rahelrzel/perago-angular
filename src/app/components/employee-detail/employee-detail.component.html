@@ -87,7 +87,26 @@
   
         <!-- Settings -->
         <div *ngIf="!(isLoading$ | async) && selectedView==='settings'">
-          <p>Settings page is under construction.</p>
+          <h2 class="text-2xl font-bold mb-4">Change Password</h2>
+          <form [formGroup]="changePasswordForm" (ngSubmit)="submitChangePassword()" class="max-w-md">
+            <nz-form-item>
+              <nz-form-label nzFor="oldPassword">Old Password</nz-form-label>
+              <nz-form-control>
+                <input nz-input formControlName="oldPassword" type="password" id="oldPassword" placeholder="Old Password" />
+              </nz-form-control>
+            </nz-form-item>
+            <nz-form-item>
+              <nz-form-label nzFor="newPassword">New Password</nz-form-label>
+              <nz-form-control>
+                <input nz-input formControlName="newPassword" type="password" id="newPassword" placeholder="New Password" />
+              </nz-form-control>
+            </nz-form-item>
+            <nz-form-item>
+              <nz-form-control>
+                <button nz-button nzType="primary" [nzLoading]="isChangingPassword" [disabled]="!changePasswordForm.valid">Change Password</button>
+              </nz-form-control>
+            </nz-form-item>
+          </form>
         </div>
   
         <nz-modal

@@ -1,10 +1,11 @@
   import { Component, OnInit, OnDestroy } from '@angular/core';
 import { NzTreeNodeOptions, NzTreeNode, NzFormatEmitEvent } from 'ng-zorro-antd/tree';
-import { Store, Select, Actions, ofActionSuccessful } from '@ngxs/store';
+import { Store, Select, Actions, ofActionSuccessful, ofActionErrored } from '@ngxs/store';
 import { Observable, Subject } from 'rxjs';
 import { take, takeUntil } from 'rxjs/operators';
-import { GetEmployeeHierarchy, EmployeeState, AddEmployeeSuccess, DeleteEmployeeSuccess } from '../../store/employee.state';
+import { GetEmployeeHierarchy, EmployeeState, AddEmployeeSuccess, DeleteEmployeeSuccess, GetEmployeeHierarchySuccess, GetEmployeeHierarchyFailure } from '../../store/employee.state';
 import { Employee } from '../../interface/employee.interface';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 @Component({
   selector: 'app-dashboard',
@@ -24,7 +25,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   drawerVisible = false;
   selectedEmployee: Employee | null = null;
 
-  constructor(private store: Store, private actions$: Actions) { }
+  constructor(private store: Store, private actions$: Actions, private message: NzMessageService) { }
 
   ngOnInit(): void {
     this.employees$.pipe(take(1)).subscribe(employees => {
@@ -43,6 +44,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
       takeUntil(this.destroy$)
     ).subscribe(() => {
       this.store.dispatch(new GetEmployeeHierarchy());
+    });
+
+    this.actions$.pipe(ofActionSuccessful(GetEmployeeHierarchySuccess), takeUntil(this.destroy$)).subscribe(() => {
+      this.message.success('Employee hierarchy loaded successfully');
+    });
+
+    this.actions$.pipe(ofActionErrored(GetEmployeeHierarchyFailure), takeUntil(this.destroy$)).subscribe((err) => {
+      this.message.error(err.payload.message || 'Failed to load employee hierarchy');
     });
   }
 

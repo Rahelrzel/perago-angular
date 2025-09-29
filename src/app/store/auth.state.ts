@@ -15,6 +15,26 @@ export class Logout {
   static readonly type = '[Auth] Logout';
 }
 
+export class ChangePassword {
+  static readonly type = '[Auth] Change Password';
+  constructor(public payload: any) {}
+}
+
+export class ChangePasswordSuccess {
+  static readonly type = '[Auth] Change Password Success';
+  constructor(public payload: any) {}
+}
+
+export class ChangePasswordFailure {
+  static readonly type = '[Auth] Change Password Failure';
+  constructor(public payload: any) {}
+}
+
+export class UpdateToken {
+  static readonly type = '[Auth] Update Token';
+  constructor(public payload: string) {}
+}
+
 // -------- STATE MODEL --------
 export interface AuthStateModel {
   token: string | null;
@@ -81,5 +101,21 @@ export class AuthState {
       isAuthenticated: false,
       user: null
     });
+  }
+
+  @Action(ChangePassword)
+  changePassword(ctx: StateContext<AuthStateModel>, action: ChangePassword) {
+    return this.authService.changePassword(action.payload).pipe(
+      tap((result: any) => {
+        ctx.dispatch(new ChangePasswordSuccess(result));
+        ctx.dispatch(new UpdateToken(result.options.token));
+      })
+    );
+  }
+
+  @Action(UpdateToken)
+  updateToken(ctx: StateContext<AuthStateModel>, action: UpdateToken) {
+    localStorage.setItem('token', action.payload);
+    ctx.patchState({ token: action.payload });
   }
 }
