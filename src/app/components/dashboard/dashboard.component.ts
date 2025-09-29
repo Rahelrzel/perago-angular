@@ -1,8 +1,9 @@
-  import { Component, OnInit } from '@angular/core';
+  import { Component, OnInit, OnDestroy } from '@angular/core';
 import { NzTreeNodeOptions, NzTreeNode, NzFormatEmitEvent } from 'ng-zorro-antd/tree';
-import { Store, Select } from '@ngxs/store';
-import { Observable } from 'rxjs';
-import { GetEmployeeHierarchy, EmployeeState } from '../../store/employee.state';
+import { Store, Select, Actions, ofActionSuccessful } from '@ngxs/store';
+import { Observable, Subject } from 'rxjs';
+import { take, takeUntil } from 'rxjs/operators';
+import { GetEmployeeHierarchy, EmployeeState, AddEmployeeSuccess, DeleteEmployeeSuccess } from '../../store/employee.state';
 import { Employee } from '../../interface/employee.interface';
 
 @Component({
@@ -10,7 +11,7 @@ import { Employee } from '../../interface/employee.interface';
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
 
   @Select(EmployeeState.employees) employees$!: Observable<Employee[]>;
   @Select(EmployeeState.isLoading) isLoading$!: Observable<boolean>;
@@ -18,18 +19,36 @@ export class DashboardComponent implements OnInit {
 
   employeeHierarchy: NzTreeNodeOptions[] = [];
   private employees: Employee[] = [];
+  private destroy$ = new Subject<void>();
 
   drawerVisible = false;
   selectedEmployee: Employee | null = null;
 
-  constructor(private store: Store) { }
+  constructor(private store: Store, private actions$: Actions) { }
 
   ngOnInit(): void {
-    this.store.dispatch(new GetEmployeeHierarchy());
-    this.employees$.subscribe(employees => {
+    this.employees$.pipe(take(1)).subscribe(employees => {
+      if (employees.length === 0) {
+        this.store.dispatch(new GetEmployeeHierarchy());
+      }
+    });
+
+    this.employees$.pipe(takeUntil(this.destroy$)).subscribe(employees => {
       this.employees = employees;
       this.employeeHierarchy = this.transformToNzTreeNodes(employees);
     });
+
+    this.actions$.pipe(
+      ofActionSuccessful(AddEmployeeSuccess, DeleteEmployeeSuccess),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.store.dispatch(new GetEmployeeHierarchy());
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   transformToNzTreeNodes(employees: Employee[]): NzTreeNodeOptions[] {

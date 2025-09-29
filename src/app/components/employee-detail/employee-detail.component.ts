@@ -1,11 +1,14 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Select, Store } from '@ngxs/store';
-import { Observable, Subscription } from 'rxjs';
+import { Select, Store, Actions, ofActionSuccessful, ofActionErrored } from '@ngxs/store';
+import { Observable, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { User } from 'src/app/interface/user.interface';
 import { AuthState, Logout } from 'src/app/store/auth.state';
-import { EmployeeState, FetchManagedEmployees } from 'src/app/store/employee.state';
+import { EmployeeState, FetchManagedEmployees, GetRoles, AddEmployee, DeleteEmployee, AddEmployeeSuccess, AddEmployeeFailure, DeleteEmployeeSuccess, DeleteEmployeeFailure } from 'src/app/store/employee.state';
+import { Role } from 'src/app/service/employee.service';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 @Component({
   selector: 'app-employee-detail',
@@ -15,59 +18,84 @@ import { EmployeeState, FetchManagedEmployees } from 'src/app/store/employee.sta
 export class EmployeeDetailComponent implements OnInit, OnDestroy {
   @Select(AuthState.user) user$!: Observable<User | null>;
   @Select(EmployeeState.managedEmployees) managedEmployees$!: Observable<User[]>;
+  @Select(EmployeeState.roles) roles$!: Observable<Role[]>;
+  @Select(EmployeeState.isLoading) isLoading$!: Observable<boolean>;
 
-  private subscription: Subscription = new Subscription();
+  private destroy$ = new Subject<void>();
 
   selectedView: string = 'info';
-  isLoading = false;
 
   // Delete Modal
   isDeleteModalVisible = false;
   employeeToDelete: User | null = null;
+  isDeleting = false;
 
-  // Edit Modal
-  isEditModalVisible = false;
-  editForm: FormGroup;
-  employeeToEdit: User | null = null;
+  // Add Employee Modal
+  isAddEmployeeModalVisible = false;
+  addEmployeeForm: FormGroup;
+  isAddingEmployee = false;
 
   employee: User | null = null;
-
-  // Managed employees list - will be replaced with dynamic data
   managedEmployees: User[] = [];
 
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private store: Store
+    private store: Store,
+    private message: NzMessageService,
+    private actions$: Actions
   ) {
-    this.editForm = this.fb.group({
-      name: ['', Validators.required],
-      position: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]]
+    this.addEmployeeForm = this.fb.group({
+      firstName: ['', Validators.required],
+      lastName: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', Validators.required],
+      roleId: ['', Validators.required],
+      salary: [null, Validators.required],
+      desc: ['']
     });
   }
 
   ngOnInit(): void {
-    this.isLoading = true;
-    this.subscription.add(
-      this.user$.subscribe(user => {
-        if (user) {
-          this.employee = user;
-          this.store.dispatch(new FetchManagedEmployees());
-        }
-        this.isLoading = false;
-      })
-    );
+    this.store.dispatch(new GetRoles());
 
-    this.subscription.add(
-      this.managedEmployees$.subscribe(employees => {
-        this.managedEmployees = employees;
-      })
-    );
+    this.user$.pipe(takeUntil(this.destroy$)).subscribe(user => {
+      if (user) {
+        this.employee = user;
+        this.store.dispatch(new FetchManagedEmployees());
+      }
+    });
+
+    this.managedEmployees$.pipe(takeUntil(this.destroy$)).subscribe(employees => {
+      this.managedEmployees = employees;
+    });
+
+    this.actions$.pipe(ofActionSuccessful(AddEmployeeSuccess), takeUntil(this.destroy$)).subscribe(() => {
+      this.isAddingEmployee = false;
+      this.isAddEmployeeModalVisible = false;
+      this.message.success('Employee added successfully');
+    });
+
+    this.actions$.pipe(ofActionErrored(AddEmployeeFailure), takeUntil(this.destroy$)).subscribe(() => {
+      this.isAddingEmployee = false;
+      this.message.error('Failed to add employee');
+    });
+
+    this.actions$.pipe(ofActionSuccessful(DeleteEmployeeSuccess), takeUntil(this.destroy$)).subscribe(() => {
+      this.isDeleting = false;
+      this.isDeleteModalVisible = false;
+      this.message.success('Employee deleted successfully');
+    });
+
+    this.actions$.pipe(ofActionErrored(DeleteEmployeeFailure), takeUntil(this.destroy$)).subscribe(() => {
+      this.isDeleting = false;
+      this.message.error('Failed to delete employee');
+    });
   }
 
   ngOnDestroy(): void {
-    this.subscription.unsubscribe();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   /** Sidebar navigation */
@@ -89,10 +117,9 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
 
   confirmDelete(): void {
     if (this.employeeToDelete) {
-      this.managedEmployees = this.managedEmployees.filter(emp => emp.id !== this.employeeToDelete!.id);
+      this.isDeleting = true;
+      this.store.dispatch(new DeleteEmployee(this.employeeToDelete.id));
     }
-    this.isDeleteModalVisible = false;
-    this.employeeToDelete = null;
   }
 
   cancelDelete(): void {
@@ -100,38 +127,20 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
     this.employeeToDelete = null;
   }
 
-  /** Edit modal functions */
-  showEditModal(emp: User): void {
-    this.employeeToEdit = emp;
-    this.isEditModalVisible = true;
-
-    this.editForm.patchValue({
-      name: `${emp.firstName} ${emp.lastName}`,
-      position: emp.role.name,
-      email: emp.email
-    });
+  /** Add Employee modal functions */
+  showAddEmployeeModal(): void {
+    this.isAddEmployeeModalVisible = true;
   }
 
-  saveEdit(): void {
-    if (this.editForm.valid && this.employeeToEdit) {
-      const updatedEmp = {
-        ...this.employeeToEdit,
-        firstName: this.editForm.value.name.split(' ')[0],
-        lastName: this.editForm.value.name.split(' ').slice(1).join(' '),
-        email: this.editForm.value.email,
-        role: { ...this.employeeToEdit.role, name: this.editForm.value.position }
-      };
-      const index = this.managedEmployees.findIndex(emp => emp.id === this.employeeToEdit!.id);
-      if (index > -1) {
-        this.managedEmployees[index] = updatedEmp;
-      }
-      this.isEditModalVisible = false;
-      this.employeeToEdit = null;
+  handleAddEmployee(): void {
+    if (this.addEmployeeForm.valid) {
+      this.isAddingEmployee = true;
+      this.store.dispatch(new AddEmployee(this.addEmployeeForm.value));
     }
   }
 
-  cancelEdit(): void {
-    this.isEditModalVisible = false;
-    this.employeeToEdit = null;
+  cancelAddEmployee(): void {
+    this.isAddEmployeeModalVisible = false;
+    this.addEmployeeForm.reset();
   }
 }
