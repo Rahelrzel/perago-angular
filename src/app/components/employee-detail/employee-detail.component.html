@@ -31,7 +31,7 @@
         <nz-spin *ngIf="isLoading" nzTip="Loading..." class="w-full flex justify-center py-10"></nz-spin>
   
         <!-- Employee Info -->
-        <div *ngIf="!isLoading && selectedView==='info'">
+        <div *ngIf="!isLoading && selectedView==='info' && employee">
           <h2 class="text-3xl font-bold mb-2">{{ employee.firstName }} {{ employee.lastName }}</h2>
           <p class="text-lg text-gray-600 mb-6">{{ employee.desc }}</p>
   
@@ -64,8 +64,8 @@
             </thead>
             <tbody>
               <tr *ngFor="let emp of managedEmployees">
-                <td>{{ emp.name }}</td>
-                <td>{{ emp.position }}</td>
+                <td>{{ emp.firstName }} {{ emp.lastName }}</td>
+                <td>{{ emp.role.name }}</td>
                 <td><a [href]="'mailto:' + emp.email">{{ emp.email }}</a></td>
                 <td>
                   <button nz-button nzType="link" nzDanger (click)="showDeleteModal(emp)">

@@ -1,43 +1,44 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Select, Store } from '@ngxs/store';
+import { Observable, Subscription } from 'rxjs';
+import { User } from 'src/app/interface/user.interface';
+import { EmployeeService } from 'src/app/service/employee.service';
+import { AuthState, Logout } from 'src/app/store/auth.state';
 
 @Component({
   selector: 'app-employee-detail',
   templateUrl: './employee-detail.component.html',
   styleUrls: ['./employee-detail.component.scss']
 })
-export class EmployeeDetailComponent implements OnInit {
+export class EmployeeDetailComponent implements OnInit, OnDestroy {
+  @Select(AuthState.user) user$!: Observable<User | null>;
+  private subscription: Subscription = new Subscription();
+
   selectedView: string = 'info';
   isLoading = false;
 
   // Delete Modal
   isDeleteModalVisible = false;
-  employeeToDelete: any = null;
+  employeeToDelete: User | null = null;
 
   // Edit Modal
   isEditModalVisible = false;
   editForm: FormGroup;
-  employeeToEdit: any = null;
+  employeeToEdit: User | null = null;
 
-  // Static employee data
-  employee = {
-    firstName: 'John',
-    lastName: 'Doe',
-    desc: 'A highly skilled software engineer with 5+ years of experience.',
-    email: 'john.doe@example.com',
-    createdAt: new Date(),
-    salary: 60000
-  };
+  employee: User | null = null;
 
-  // Static managed employees list
-  managedEmployees = [
-    { name: 'Alice Smith', position: 'Developer', email: 'alice@example.com' },
-    { name: 'Bob Johnson', position: 'Designer', email: 'bob@example.com' },
-    { name: 'Charlie Brown', position: 'QA Tester', email: 'charlie@example.com' }
-  ];
+  // Managed employees list - will be replaced with dynamic data
+  managedEmployees: User[] = [];
 
-  constructor(private fb: FormBuilder, private router: Router) {
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private store: Store,
+    private employeeService: EmployeeService
+  ) {
     this.editForm = this.fb.group({
       name: ['', Validators.required],
       position: ['', Validators.required],
@@ -45,7 +46,28 @@ export class EmployeeDetailComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.isLoading = true;
+    this.subscription.add(
+      this.user$.subscribe(user => {
+        if (user) {
+          this.employee = user;
+          this.fetchManagedEmployees(user.id);
+        }
+        this.isLoading = false;
+      })
+    );
+  }
+
+  fetchManagedEmployees(managerId: string): void {
+    this.employeeService.getEmployees().subscribe(employees => {
+      this.managedEmployees = employees.filter(emp => emp.parentId === managerId);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
+  }
 
   /** Sidebar navigation */
   selectView(view: string): void {
@@ -54,18 +76,20 @@ export class EmployeeDetailComponent implements OnInit {
 
   /** Logout */
   logout(): void {
-    localStorage.clear();
+    this.store.dispatch(new Logout());
     this.router.navigate(['/login']);
   }
 
   /** Delete modal functions */
-  showDeleteModal(emp: any): void {
+  showDeleteModal(emp: User): void {
     this.employeeToDelete = emp;
     this.isDeleteModalVisible = true;
   }
 
   confirmDelete(): void {
-    this.managedEmployees = this.managedEmployees.filter(emp => emp !== this.employeeToDelete);
+    if (this.employeeToDelete) {
+      this.managedEmployees = this.managedEmployees.filter(emp => emp.id !== this.employeeToDelete!.id);
+    }
     this.isDeleteModalVisible = false;
     this.employeeToDelete = null;
   }
@@ -76,21 +100,27 @@ export class EmployeeDetailComponent implements OnInit {
   }
 
   /** Edit modal functions */
-  showEditModal(emp: any): void {
+  showEditModal(emp: User): void {
     this.employeeToEdit = emp;
     this.isEditModalVisible = true;
 
     this.editForm.patchValue({
-      name: emp.name,
-      position: emp.position,
+      name: `${emp.firstName} ${emp.lastName}`,
+      position: emp.role.name,
       email: emp.email
     });
   }
 
   saveEdit(): void {
-    if (this.editForm.valid) {
-      const updatedEmp = this.editForm.value;
-      const index = this.managedEmployees.indexOf(this.employeeToEdit);
+    if (this.editForm.valid && this.employeeToEdit) {
+      const updatedEmp = {
+        ...this.employeeToEdit,
+        firstName: this.editForm.value.name.split(' ')[0],
+        lastName: this.editForm.value.name.split(' ').slice(1).join(' '),
+        email: this.editForm.value.email,
+        role: { ...this.employeeToEdit.role, name: this.editForm.value.position }
+      };
+      const index = this.managedEmployees.findIndex(emp => emp.id === this.employeeToEdit!.id);
       if (index > -1) {
         this.managedEmployees[index] = updatedEmp;
       }
