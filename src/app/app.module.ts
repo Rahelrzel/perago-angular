@@ -25,6 +25,7 @@ import { NgxsModule } from '@ngxs/store';
 import { NgxsLoggerPluginModule } from '@ngxs/logger-plugin';
 import { NgxsReduxDevtoolsPluginModule } from '@ngxs/devtools-plugin';
 import { AuthState } from './store/auth.state';
+import { EmployeeState } from './store/employee.state';
 
 
 registerLocaleData(en);
@@ -46,7 +47,7 @@ registerLocaleData(en);
     NzButtonModule,
     NzFormModule,
     ReactiveFormsModule,
-    NgxsModule.forRoot([AuthState]),
+    NgxsModule.forRoot([AuthState, EmployeeState]),
 
     NgxsLoggerPluginModule.forRoot(),
     NgxsReduxDevtoolsPluginModule.forRoot()

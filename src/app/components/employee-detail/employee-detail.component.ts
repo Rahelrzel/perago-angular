@@ -4,8 +4,8 @@ import { Router } from '@angular/router';
 import { Select, Store } from '@ngxs/store';
 import { Observable, Subscription } from 'rxjs';
 import { User } from 'src/app/interface/user.interface';
-import { EmployeeService } from 'src/app/service/employee.service';
 import { AuthState, Logout } from 'src/app/store/auth.state';
+import { EmployeeState, FetchManagedEmployees } from 'src/app/store/employee.state';
 
 @Component({
   selector: 'app-employee-detail',
@@ -14,6 +14,8 @@ import { AuthState, Logout } from 'src/app/store/auth.state';
 })
 export class EmployeeDetailComponent implements OnInit, OnDestroy {
   @Select(AuthState.user) user$!: Observable<User | null>;
+  @Select(EmployeeState.managedEmployees) managedEmployees$!: Observable<User[]>;
+
   private subscription: Subscription = new Subscription();
 
   selectedView: string = 'info';
@@ -36,8 +38,7 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private store: Store,
-    private employeeService: EmployeeService
+    private store: Store
   ) {
     this.editForm = this.fb.group({
       name: ['', Validators.required],
@@ -52,17 +53,17 @@ export class EmployeeDetailComponent implements OnInit, OnDestroy {
       this.user$.subscribe(user => {
         if (user) {
           this.employee = user;
-          this.fetchManagedEmployees(user.id);
+          this.store.dispatch(new FetchManagedEmployees());
         }
         this.isLoading = false;
       })
     );
-  }
 
-  fetchManagedEmployees(managerId: string): void {
-    this.employeeService.getEmployees().subscribe(employees => {
-      this.managedEmployees = employees.filter(emp => emp.parentId === managerId);
-    });
+    this.subscription.add(
+      this.managedEmployees$.subscribe(employees => {
+        this.managedEmployees = employees;
+      })
+    );
   }
 
   ngOnDestroy(): void {
